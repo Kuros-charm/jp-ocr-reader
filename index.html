@@ -1025,6 +1025,69 @@
         const budouxParser = loadDefaultJapaneseParser();
 
         // ============================================
+        // LocalStorage Utilities (with availability check)
+        // ============================================
+
+        /**
+         * Check if localStorage is available
+         */
+        function isLocalStorageAvailable() {
+            try {
+                const storage = window['localStorage'];
+                const testKey = '__storage_test__';
+                storage.setItem(testKey, testKey);
+                storage.removeItem(testKey);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        const storageAvailable = isLocalStorageAvailable();
+
+        /**
+         * Get storage reference safely
+         */
+        function getStorage() {
+            return window['localStorage'];
+        }
+
+        /**
+         * Save a value to localStorage if available
+         */
+        function saveToStorage(key, value) {
+            if (storageAvailable) {
+                try {
+                    getStorage().setItem(key, JSON.stringify(value));
+                } catch (e) {
+                    console.warn('Failed to save to localStorage:', e);
+                }
+            }
+        }
+
+        /**
+         * Load a value from localStorage if available
+         */
+        function loadFromStorage(key, defaultValue = null) {
+            if (storageAvailable) {
+                try {
+                    const value = getStorage().getItem(key);
+                    return value !== null ? JSON.parse(value) : defaultValue;
+                } catch (e) {
+                    console.warn('Failed to load from localStorage:', e);
+                    return defaultValue;
+                }
+            }
+            return defaultValue;
+        }
+
+        // Storage keys
+        const STORAGE_KEYS = {
+            API_KEY: 'poe_api_key',
+            EXTRACTED_RESULT: 'extracted_result'
+        };
+
+        // ============================================
         // Poe OpenAI-Compatible API Utilities
         // ============================================
 
@@ -1298,14 +1361,45 @@
             }
         });
 
-        // Update status when API key changes
+        // Update status when API key changes and save to storage
         apiKeyInput.addEventListener('input', () => {
-            if (apiKeyInput.value.trim()) {
+            const apiKey = apiKeyInput.value.trim();
+            if (apiKey) {
                 updateApiKeyStatus('', 'API key entered - ready to use');
+                saveToStorage(STORAGE_KEYS.API_KEY, apiKey);
             } else {
                 updateApiKeyStatus('', 'Enter your API key to start');
+                saveToStorage(STORAGE_KEYS.API_KEY, '');
             }
         });
+
+        // Load saved API key on startup
+        const savedApiKey = loadFromStorage(STORAGE_KEYS.API_KEY, '');
+        if (savedApiKey) {
+            apiKeyInput.value = savedApiKey;
+            updateApiKeyStatus('', 'API key loaded - ready to use');
+        }
+
+        // Load saved extracted result on startup
+        const savedResult = loadFromStorage(STORAGE_KEYS.EXTRACTED_RESULT, null);
+        if (savedResult && savedResult.data) {
+            resultSection.classList.add('visible');
+            loadingState.style.display = 'none';
+            extractedText.style.display = 'block';
+            errorState.style.display = 'none';
+
+            if (savedResult.type === 'sentences' && Array.isArray(savedResult.data)) {
+                extractedContent = savedResult.data.join('\n');
+                extractedText.innerHTML = segmentAndRenderSentences(savedResult.data);
+            } else if (savedResult.type === 'text' && savedResult.data) {
+                extractedContent = savedResult.data;
+                extractedText.innerHTML = segmentAndRender(savedResult.data);
+            }
+
+            if (extractedContent) {
+                segmentLegend.style.display = 'flex';
+            }
+        }
 
         // Segment text using BudouX and create HTML (book reader style, for plain text fallback)
         function segmentAndRender(text) {
@@ -1433,6 +1527,9 @@
             uploadZone.classList.remove('has-image');
             resultSection.classList.remove('visible');
             segmentLegend.style.display = 'none';
+            extractedContent = '';
+            // Clear saved result from storage
+            saveToStorage(STORAGE_KEYS.EXTRACTED_RESULT, null);
         }
 
         // Extract text
@@ -1488,10 +1585,14 @@
                     if (Array.isArray(sentences) && sentences.length > 0) {
                         extractedContent = sentences.join('\n');
                         extractedText.innerHTML = segmentAndRenderSentences(sentences);
+                        // Save result to storage
+                        saveToStorage(STORAGE_KEYS.EXTRACTED_RESULT, { type: 'sentences', data: sentences });
                     } else {
                         // Fallback to plain text if JSON parsing failed
                         extractedContent = result.content;
                         extractedText.innerHTML = segmentAndRender(result.content);
+                        // Save result to storage
+                        saveToStorage(STORAGE_KEYS.EXTRACTED_RESULT, { type: 'text', data: result.content });
                     }
 
                     segmentLegend.style.display = 'flex';
@@ -1916,6 +2017,7 @@ Return in a JSON code block:
             }
         });
     </script>
+
 
 
 
