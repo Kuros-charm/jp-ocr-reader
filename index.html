@@ -1,0 +1,1925 @@
+<!DOCTYPE html><html lang="ja"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Japanese Text Extractor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&amp;family=Zen+Kaku+Gothic+New:wght@400;500;700&amp;display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #faf8f5;
+            --bg-secondary: #fff;
+            --bg-accent: #f0ebe3;
+            --text-primary: #2d2a26;
+            --text-secondary: #5c5650;
+            --accent: #c41e3a;
+            --accent-light: #e8d4d8;
+            --border: #e0dbd4;
+            --shadow: rgba(45, 42, 38, 0.08);
+            --segment-border: rgba(196, 30, 58, 0.15);
+            --segment-hover: rgba(196, 30, 58, 0.08);
+        }
+
+        .dark {
+            --bg-primary: #1a1917;
+            --bg-secondary: #242220;
+            --bg-accent: #2d2a26;
+            --text-primary: #f0ebe3;
+            --text-secondary: #a39e96;
+            --accent: #e85a6f;
+            --accent-light: #3d2a2e;
+            --border: #3d3a36;
+            --shadow: rgba(0, 0, 0, 0.3);
+            --segment-border: rgba(232, 90, 111, 0.2);
+            --segment-hover: rgba(232, 90, 111, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', 'Zen Kaku Gothic New', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.7;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 24px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        .api-key-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+
+        .api-key-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .api-key-label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .api-key-link {
+            font-size: 0.8rem;
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .api-key-link:hover {
+            text-decoration: underline;
+        }
+
+        .api-key-input-wrapper {
+            position: relative;
+            display: flex;
+            gap: 8px;
+        }
+
+        .api-key-input {
+            flex: 1;
+            font-family: inherit;
+            font-size: 16px;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .api-key-input:focus {
+            border-color: var(--accent);
+        }
+
+        .api-key-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .api-key-toggle {
+            padding: 10px 14px;
+            background: var(--bg-accent);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .api-key-toggle:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .api-key-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .api-key-status.connected {
+            color: #2e7d32;
+        }
+
+        .api-key-status.error {
+            color: var(--accent);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+        }
+
+        .status-dot.connected {
+            background: #2e7d32;
+        }
+
+        .status-dot.error {
+            background: var(--accent);
+        }
+
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--accent) 0%, #8b1428 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        h1 {
+            font-family: 'Zen Kaku Gothic New', sans-serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-top: 4px;
+        }
+
+        .upload-zone {
+            background: var(--bg-secondary);
+            border: 2px dashed var(--border);
+            border-radius: 16px;
+            padding: 48px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent);
+            background: var(--bg-accent);
+        }
+
+        .upload-zone.drag-over {
+            border-color: var(--accent);
+            background: var(--accent-light);
+            transform: scale(1.01);
+        }
+
+        .upload-zone.has-image {
+            padding: 16px;
+            border-style: solid;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.8;
+        }
+
+        .upload-text {
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .upload-hint {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .preview-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .preview-container.visible {
+            display: flex;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px var(--shadow);
+        }
+
+        .preview-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            font-family: inherit;
+            font-size: 16px;
+            font-weight: 500;
+            padding: 12px 24px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent) 0%, #8b1428 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(196, 30, 58, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(196, 30, 58, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: var(--bg-accent);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .hidden-input {
+            display: none;
+        }
+
+        .result-section {
+            margin-top: 32px;
+            display: none;
+        }
+
+        .result-section.visible {
+            display: block;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .result-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .result-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 16px var(--shadow);
+        }
+
+        .loading-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            padding: 32px;
+        }
+
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .extracted-text {
+            font-size: 1.25rem;
+            line-height: 2.2;
+            word-break: break-word;
+        }
+
+        .extracted-text p {
+            margin-bottom: 1em;
+        }
+
+        /* Segmented text display - one sentence per line */
+        .segmented-text {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6em;
+        }
+
+        .segmented-line {
+            display: inline;
+        }
+
+        .segment {
+            display: inline-block;
+            position: relative;
+            padding: 2px 0;
+            border-bottom: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .segment:hover {
+            background: var(--segment-hover);
+            border-radius: 4px;
+        }
+
+        /* Subtle separator between segments */
+        .segment::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 60%;
+            width: 1px;
+            background: var(--segment-border);
+        }
+
+        .segment:last-child::after {
+            display: none;
+        }
+
+        /* Segment indicator on hover */
+        .segment:hover::before {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--accent);
+            border-radius: 1px;
+            opacity: 0.6;
+        }
+
+        .segmentation-legend {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .legend-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .legend-line {
+            width: 16px;
+            height: 1px;
+            background: var(--segment-border);
+        }
+
+        .error-state {
+            color: var(--accent);
+            text-align: center;
+            padding: 24px;
+        }
+
+        .error-icon {
+            font-size: 36px;
+            margin-bottom: 12px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .copy-btn {
+            font-size: 14px;
+            padding: 8px 16px;
+        }
+
+        .copy-btn.copied {
+            background: #2e7d32;
+            color: white;
+            border-color: #2e7d32;
+        }
+
+        /* Decorative elements */
+        .deco-pattern {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 200px;
+            height: 200px;
+            opacity: 0.03;
+            pointer-events: none;
+            background: repeating-linear-gradient(
+                45deg,
+                var(--accent),
+                var(--accent) 2px,
+                transparent 2px,
+                transparent 20px
+            );
+        }
+
+        /* Processing badge */
+        .processing-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            background: var(--bg-accent);
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin-left: 12px;
+        }
+
+        .processing-badge .mini-loader {
+            width: 12px;
+            height: 12px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        /* Sticky translation footer */
+        .translation-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            box-shadow: 0 -4px 20px var(--shadow);
+            padding: 16px 20px;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+
+        .translation-footer.visible {
+            transform: translateY(0);
+        }
+
+        .translation-footer-content {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .translation-close {
+            position: absolute;
+            top: -4px;
+            right: 0;
+            background: var(--bg-accent);
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-secondary);
+            transition: all 0.2s ease;
+        }
+
+        .translation-close:hover {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .translation-original {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            padding-right: 40px;
+        }
+
+        .translation-rows {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .translation-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .translation-label {
+            flex-shrink: 0;
+            width: 50px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            padding-top: 2px;
+        }
+
+        .translation-value {
+            flex: 1;
+            font-size: 1rem;
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        .translation-value.romaji {
+            font-style: italic;
+            color: var(--accent);
+        }
+
+        .translation-loading {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .translation-loading .mini-loader {
+            width: 14px;
+            height: 14px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .translation-error {
+            color: var(--accent);
+            font-size: 0.9rem;
+        }
+
+        .translation-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .btn-explain {
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--accent);
+            background: transparent;
+            color: var(--accent);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-explain:hover {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-explain:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-explain.loading {
+            pointer-events: none;
+        }
+
+        .explanation-section {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            display: none;
+        }
+
+        .explanation-section.visible {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .explanation-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .explanation-content {
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .progression-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .progression-table th {
+            text-align: left;
+            padding: 6px 8px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .progression-table td {
+            padding: 8px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        .progression-table tr:last-child td {
+            border-bottom: none;
+            background: var(--accent-light);
+        }
+
+        .progression-table tr:last-child td:first-child {
+            border-radius: 0 0 0 8px;
+        }
+
+        .progression-table tr:last-child td:last-child {
+            border-radius: 0 0 8px 0;
+        }
+
+        .progression-step {
+            width: 22px;
+            height: 22px;
+            background: var(--accent);
+            color: white;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .progression-japanese {
+            font-size: 1.05rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .progression-romaji {
+            font-size: 0.85rem;
+            font-style: italic;
+            color: var(--accent);
+        }
+
+        .progression-chinese {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .diff-highlight {
+            background: var(--accent-light);
+            color: var(--accent);
+            font-weight: 600;
+            border-radius: 2px;
+            padding: 0 1px;
+        }
+
+        @media (max-width: 600px) {
+            .progression-table {
+                font-size: 0.85rem;
+            }
+
+            .progression-table th,
+            .progression-table td {
+                padding: 6px;
+            }
+
+            .progression-step {
+                width: 18px;
+                height: 18px;
+                font-size: 0.65rem;
+            }
+
+            .progression-japanese {
+                font-size: 0.95rem;
+            }
+
+            .progression-romaji,
+            .progression-chinese {
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Active segment styling */
+        .segment.active {
+            background: var(--accent-light);
+            border-radius: 4px;
+            box-shadow: 0 0 0 2px var(--accent);
+        }
+
+        /* Add padding at bottom when footer is visible */
+        body.footer-open {
+            padding-bottom: 160px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 16px;
+            }
+
+            h1 {
+                font-size: 1.4rem;
+            }
+
+            .upload-zone {
+                padding: 32px 16px;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .preview-actions {
+                width: 100%;
+            }
+
+            .extracted-text {
+                font-size: 1.1rem;
+            }
+
+            .result-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .header-actions {
+                width: 100%;
+            }
+
+            .header-actions .btn {
+                flex: 1;
+            }
+
+            .translation-footer {
+                padding: 14px 16px;
+            }
+
+            .translation-original {
+                font-size: 1.25rem;
+            }
+
+            .translation-row {
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            .translation-label {
+                width: auto;
+            }
+
+            body.footer-open {
+                padding-bottom: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="deco-pattern"></div>
+
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">文</div>
+                <div>
+                    <h1>Japanese Text Extractor</h1>
+                    <p class="subtitle">画像から日本語テキストを抽出 + 分節</p>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <!-- API Key Section -->
+            <div class="api-key-section">
+                <div class="api-key-header">
+                    <label class="api-key-label" for="apiKeyInput">
+                        <span>🔑</span> Poe API Key
+                    </label>
+                    <a href="https://poe.com/api_key" target="_blank" rel="noopener noreferrer" class="api-key-link">
+                        Get your API key →
+                    </a>
+                </div>
+                <div class="api-key-input-wrapper">
+                    <input type="password" id="apiKeyInput" class="api-key-input" placeholder="Enter your Poe API key..." autocomplete="off">
+                    <button type="button" id="apiKeyToggle" class="api-key-toggle" title="Show/hide API key">👁️</button>
+                </div>
+                <div class="api-key-status" id="apiKeyStatus">
+                    <span class="status-dot"></span>
+                    <span>Enter your API key to start</span>
+                </div>
+            </div>
+
+            <div class="upload-zone" id="uploadZone">
+                <div class="upload-content" id="uploadContent">
+                    <div class="upload-icon">📷</div>
+                    <p class="upload-text">Drop an image here or click to upload</p>
+                    <p class="upload-hint">Supports JPG, PNG, GIF, WebP</p>
+                </div>
+                <div class="preview-container" id="previewContainer">
+                    <img class="preview-image" id="previewImage" alt="Preview">
+                    <div class="preview-actions">
+                        <button class="btn btn-primary" id="extractBtn">
+                            <span>✨</span> Extract Text
+                        </button>
+                        <button class="btn btn-secondary" id="clearBtn">
+                            <span>✕</span> Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <input type="file" class="hidden-input" id="fileInput" accept="image/*">
+
+            <section class="result-section" id="resultSection">
+                <div class="result-header">
+                    <h2 class="result-title">
+                        <span>📝</span> Extracted Text
+                        <span class="processing-badge" id="segmentingBadge" style="display: none;">
+                            <span class="mini-loader"></span>
+                            Segmenting...
+                        </span>
+                    </h2>
+                    <div class="header-actions">
+                        <button class="btn btn-secondary copy-btn" id="copyBtn">
+                            <span>📋</span> Copy
+                        </button>
+                    </div>
+                </div>
+                <div class="result-box" id="resultBox">
+                    <div class="loading-state" id="loadingState">
+                        <div class="loader"></div>
+                        <p class="loading-text">Analyzing image and extracting Japanese text...</p>
+                    </div>
+                    <div class="extracted-text" id="extractedText"></div>
+                    <div class="segmentation-legend" id="segmentLegend" style="display: none;">
+                        <span class="legend-indicator">
+                            <span class="legend-line"></span>
+                        </span>
+                        <span>Subtle lines indicate word boundaries (BudouX segmentation). Hover to highlight segments.</span>
+                    </div>
+                    <div class="error-state" id="errorState" style="display: none;">
+                        <div class="error-icon">⚠️</div>
+                        <p id="errorMessage">An error occurred. Please try again.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Translation Footer -->
+    <div class="translation-footer" id="translationFooter">
+        <div class="translation-footer-content">
+            <button class="translation-close" id="translationClose">✕</button>
+            <div class="translation-original" id="translationOriginal"></div>
+            <div class="translation-rows">
+                <div class="translation-row">
+                    <span class="translation-label">Romaji</span>
+                    <span class="translation-value romaji" id="translationRomaji">
+                        <span class="translation-loading">
+                            <span class="mini-loader"></span>
+                            Loading...
+                        </span>
+                    </span>
+                </div>
+                <div class="translation-row">
+                    <span class="translation-label">繁中</span>
+                    <span class="translation-value" id="translationChinese">
+                        <span class="translation-loading">
+                            <span class="mini-loader"></span>
+                            Loading...
+                        </span>
+                    </span>
+                </div>
+            </div>
+            <div class="translation-actions">
+                <button class="btn-explain" id="explainBtn">
+                    <span>📖</span> Explain
+                </button>
+            </div>
+            <div class="explanation-section" id="explanationSection">
+                <div class="explanation-label">詞形變化 Conjugation Breakdown</div>
+                <div class="explanation-content" id="explanationContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { loadDefaultJapaneseParser } from 'https://cdn.jsdelivr.net/npm/budoux/+esm';
+
+        // Initialize BudouX parser
+        const budouxParser = loadDefaultJapaneseParser();
+
+        // ============================================
+        // Poe OpenAI-Compatible API Utilities
+        // ============================================
+
+        const POE_API_BASE = 'https://api.poe.com/v1';
+
+        /**
+         * Get the current API key from the input field
+         */
+        function getApiKey() {
+            const input = document.getElementById('apiKeyInput');
+            return input ? input.value.trim() : '';
+        }
+
+        /**
+         * Update the API key status display
+         */
+        function updateApiKeyStatus(status, message) {
+            const statusEl = document.getElementById('apiKeyStatus');
+            if (!statusEl) return;
+
+            statusEl.className = `api-key-status ${status}`;
+            statusEl.innerHTML = `<span class="status-dot ${status}"></span><span>${message}</span>`;
+        }
+
+        /**
+         * Convert a File to base64 data URL
+         */
+        async function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        /**
+         * Extracts clean content from LLM response by removing thinking tokens
+         */
+        function cleanLLMResponse(content) {
+            if (!content || typeof content !== 'string') {
+                return '';
+            }
+
+            let cleaned = content;
+            cleaned = cleaned.replace(/<think>([\s\S]*?)<\/think>/gi, '');
+            cleaned = cleaned.replace(/<thinking>([\s\S]*?)<\/thinking>/gi, '');
+            cleaned = cleaned.replace(/<reasoning>([\s\S]*?)<\/reasoning>/gi, '');
+            cleaned = cleaned.replace(/<think>([\s\S]*)$/gi, '');
+            cleaned = cleaned.replace(/<thinking>([\s\S]*)$/gi, '');
+            cleaned = cleaned.replace(/<reasoning>([\s\S]*)$/gi, '');
+
+            return cleaned.trim();
+        }
+
+        /**
+         * Extracts JSON from a ```json code block in LLM response
+         */
+        function extractJSONFromCodeBlock(content, defaultValue = null) {
+            if (!content || typeof content !== 'string') {
+                return defaultValue;
+            }
+
+            const cleaned = cleanLLMResponse(content);
+
+            // Find the line starting with ```json and ignore everything before it
+            const codeBlockStart = cleaned.search(/^```json/m);
+            if (codeBlockStart === -1) {
+                return defaultValue;
+            }
+
+            const fromCodeBlock = cleaned.substring(codeBlockStart);
+
+            // Match ```json ... ``` code block
+            const match = fromCodeBlock.match(/^```json\s*([\s\S]*?)```/m);
+            if (match) {
+                try {
+                    return JSON.parse(match[1].trim());
+                } catch (e) {
+                    console.error('JSON parse error:', e.message);
+                    return defaultValue;
+                }
+            }
+
+            return defaultValue;
+        }
+
+        /**
+         * Make a streaming request to Poe OpenAI-compatible API
+         * @param {string} model - The model/bot name (e.g., "Gemini-3-Flash")
+         * @param {Array} messages - OpenAI-format messages array
+         * @param {Object} options - Additional options
+         * @param {Object} callbacks - Streaming callbacks
+         * @returns {Promise<Object>} Response with content and parsed JSON
+         */
+        async function requestPoeAPI(model, messages, options = {}, callbacks = {}) {
+            const apiKey = getApiKey();
+            if (!apiKey) {
+                throw new Error('API key is required. Please enter your Poe API key.');
+            }
+
+            const body = {
+                model: model,
+                messages: messages,
+                stream: options.stream !== false,
+                ...options.extraBody
+            };
+
+            const response = await fetch(`${POE_API_BASE}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorMessage = `API Error: ${response.status}`;
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    errorMessage = errorJson.error?.message || errorMessage;
+                } catch {
+                    errorMessage = errorText || errorMessage;
+                }
+                updateApiKeyStatus('error', 'Invalid API key or request failed');
+                throw new Error(errorMessage);
+            }
+
+            updateApiKeyStatus('connected', 'Connected');
+
+            // Handle streaming response
+            if (options.stream !== false) {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullContent = '';
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6).trim();
+                            if (data === '[DONE]') continue;
+
+                            try {
+                                const parsed = JSON.parse(data);
+                                const delta = parsed.choices?.[0]?.delta?.content || '';
+                                if (delta) {
+                                    fullContent += delta;
+                                    if (callbacks.onIncomplete) {
+                                        callbacks.onIncomplete({
+                                            content: cleanLLMResponse(fullContent),
+                                            rawContent: fullContent
+                                        });
+                                    }
+                                }
+                            } catch {
+                                // Skip invalid JSON chunks
+                            }
+                        }
+                    }
+                }
+
+                const cleanedContent = cleanLLMResponse(fullContent);
+
+                return {
+                    content: cleanedContent,
+                    raw: fullContent
+                };
+            } else {
+                // Non-streaming response
+                const data = await response.json();
+                const content = data.choices?.[0]?.message?.content || '';
+                const cleanedContent = cleanLLMResponse(content);
+
+                return {
+                    content: cleanedContent,
+                    raw: content
+                };
+            }
+        }
+
+        /**
+         * Request with image attachment via Poe API
+         * @param {string} model - The model name
+         * @param {string} prompt - Text prompt
+         * @param {File} imageFile - Image file to attach
+         * @param {Object} options - Additional options
+         * @param {Object} callbacks - Streaming callbacks
+         */
+        async function requestWithImage(model, prompt, imageFile, options = {}, callbacks = {}) {
+            const base64Data = await fileToBase64(imageFile);
+
+            const messages = [{
+                role: 'user',
+                content: [
+                    { type: 'text', text: prompt },
+                    {
+                        type: 'image_url',
+                        image_url: { url: base64Data }
+                    }
+                ]
+            }];
+
+            return requestPoeAPI(model, messages, options, callbacks);
+        }
+
+        /**
+         * Request JSON response from Poe API (expects ```json code block)
+         */
+        async function requestLLMJSON(model, prompt, options = {}, defaultValue = null) {
+            const messages = [{ role: 'user', content: prompt }];
+            const result = await requestPoeAPI(model, messages, { ...options, stream: false });
+            return extractJSONFromCodeBlock(result.raw, defaultValue);
+        }
+
+        // ============================================
+        // End of Poe API Utilities
+        // ============================================
+
+        // Dark mode detection
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+
+        // DOM Elements
+        const uploadZone = document.getElementById('uploadZone');
+        const uploadContent = document.getElementById('uploadContent');
+        const previewContainer = document.getElementById('previewContainer');
+        const previewImage = document.getElementById('previewImage');
+        const fileInput = document.getElementById('fileInput');
+        const extractBtn = document.getElementById('extractBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const resultSection = document.getElementById('resultSection');
+        const loadingState = document.getElementById('loadingState');
+        const extractedText = document.getElementById('extractedText');
+        const errorState = document.getElementById('errorState');
+        const errorMessage = document.getElementById('errorMessage');
+        const copyBtn = document.getElementById('copyBtn');
+        const segmentingBadge = document.getElementById('segmentingBadge');
+        const segmentLegend = document.getElementById('segmentLegend');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const apiKeyToggle = document.getElementById('apiKeyToggle');
+
+        let currentFile = null;
+        let extractedContent = '';
+
+        // API Key toggle visibility
+        apiKeyToggle.addEventListener('click', () => {
+            if (apiKeyInput.type === 'password') {
+                apiKeyInput.type = 'text';
+                apiKeyToggle.textContent = '🙈';
+            } else {
+                apiKeyInput.type = 'password';
+                apiKeyToggle.textContent = '👁️';
+            }
+        });
+
+        // Update status when API key changes
+        apiKeyInput.addEventListener('input', () => {
+            if (apiKeyInput.value.trim()) {
+                updateApiKeyStatus('', 'API key entered - ready to use');
+            } else {
+                updateApiKeyStatus('', 'Enter your API key to start');
+            }
+        });
+
+        // Segment text using BudouX and create HTML (book reader style, for plain text fallback)
+        function segmentAndRender(text) {
+            const lines = text.split(/\n/);
+            let html = '<div class="segmented-text">';
+
+            lines.forEach((line, index) => {
+                if (line.trim() === '') {
+                    // Preserve paragraph breaks
+                    html += '<br><br>';
+                    return;
+                }
+
+                const segments = budouxParser.parse(line);
+
+                html += '<span class="segmented-line">';
+                segments.forEach(segment => {
+                    const escaped = segment
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;');
+                    html += `<span class="segment">${escaped}</span>`;
+                });
+                html += '</span>';
+
+                // Add space between lines (but not after empty lines which already have <br>)
+                if (index < lines.length - 1 && lines[index + 1].trim() !== '') {
+                    html += ' ';
+                }
+            });
+
+            html += '</div>';
+            return html;
+        }
+
+        // Segment sentences array using BudouX and create HTML (one sentence per line)
+        function segmentAndRenderSentences(sentences) {
+            let html = '<div class="segmented-text">';
+
+            sentences.forEach((sentence) => {
+                if (typeof sentence !== 'string' || sentence.trim() === '') {
+                    return;
+                }
+
+                // Parse the sentence with BudouX
+                const segments = budouxParser.parse(sentence.trim());
+
+                html += '<div class="segmented-line">';
+                segments.forEach(segment => {
+                    const escaped = segment
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;');
+                    html += `<span class="segment">${escaped}</span>`;
+                });
+                html += '</div>';
+            });
+
+            html += '</div>';
+            return html;
+        }
+
+        // File handling
+        uploadZone.addEventListener('click', () => {
+            if (!currentFile) {
+                fileInput.click();
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        // Drag and drop
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('drag-over');
+        });
+
+        uploadZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('drag-over');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('drag-over');
+
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showError('Please upload an image file.');
+                return;
+            }
+
+            currentFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                uploadContent.style.display = 'none';
+                previewContainer.classList.add('visible');
+                uploadZone.classList.add('has-image');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Clear button
+        clearBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            resetUpload();
+        });
+
+        function resetUpload() {
+            currentFile = null;
+            fileInput.value = '';
+            previewImage.src = '';
+            uploadContent.style.display = '';
+            previewContainer.classList.remove('visible');
+            uploadZone.classList.remove('has-image');
+            resultSection.classList.remove('visible');
+            segmentLegend.style.display = 'none';
+        }
+
+        // Extract text
+        extractBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+
+            if (!currentFile) return;
+
+            // Check for API key
+            if (!getApiKey()) {
+                showError('Please enter your Poe API key first.');
+                return;
+            }
+
+            extractBtn.disabled = true;
+            resultSection.classList.add('visible');
+            loadingState.style.display = 'flex';
+            extractedText.style.display = 'none';
+            errorState.style.display = 'none';
+            segmentingBadge.style.display = 'none';
+            segmentLegend.style.display = 'none';
+            extractedContent = '';
+
+            try {
+                const result = await requestWithImage(
+                    'Gemini-3-Flash',
+                    `Extract all Japanese sentences from this image. Return a JSON array of strings in a code block, where each string is one complete Japanese sentence.
+
+\`\`\`json
+["sentence1", "sentence2", "sentence3"]
+\`\`\``,
+                    currentFile,
+                    { stream: true },
+                    {
+                        onIncomplete: (data) => {
+                            // Show raw content while streaming
+                            loadingState.style.display = 'none';
+                            extractedText.style.display = 'block';
+                            segmentingBadge.style.display = 'inline-flex';
+                            extractedText.textContent = data.content;
+                        }
+                    }
+                );
+
+                // Process the complete response
+                loadingState.style.display = 'none';
+                extractedText.style.display = 'block';
+                segmentingBadge.style.display = 'inline-flex';
+
+                setTimeout(() => {
+                    const sentences = extractJSONFromCodeBlock(result.raw, null);
+
+                    if (Array.isArray(sentences) && sentences.length > 0) {
+                        extractedContent = sentences.join('\n');
+                        extractedText.innerHTML = segmentAndRenderSentences(sentences);
+                    } else {
+                        // Fallback to plain text if JSON parsing failed
+                        extractedContent = result.content;
+                        extractedText.innerHTML = segmentAndRender(result.content);
+                    }
+
+                    segmentLegend.style.display = 'flex';
+                    segmentingBadge.style.display = 'none';
+                    extractBtn.disabled = false;
+                }, 100);
+
+            } catch (err) {
+                showError(err.message || 'Failed to send the image for processing.');
+                extractBtn.disabled = false;
+            }
+        });
+
+        function showError(message) {
+            loadingState.style.display = 'none';
+            extractedText.style.display = 'none';
+            errorState.style.display = 'block';
+            segmentingBadge.style.display = 'none';
+            errorMessage.textContent = message;
+        }
+
+        // Copy button
+        copyBtn.addEventListener('click', async () => {
+            if (!extractedContent) return;
+
+            try {
+                await navigator.clipboard.writeText(extractedContent);
+                copyBtn.classList.add('copied');
+                copyBtn.innerHTML = '<span>✓</span> Copied!';
+
+                setTimeout(() => {
+                    copyBtn.classList.remove('copied');
+                    copyBtn.innerHTML = '<span>📋</span> Copy';
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+            }
+        });
+
+        // ============================================
+        // Translation Footer Logic
+        // ============================================
+
+        const translationFooter = document.getElementById('translationFooter');
+        const translationClose = document.getElementById('translationClose');
+        const translationOriginal = document.getElementById('translationOriginal');
+        const translationRomaji = document.getElementById('translationRomaji');
+        const translationChinese = document.getElementById('translationChinese');
+        const explainBtn = document.getElementById('explainBtn');
+        const explanationSection = document.getElementById('explanationSection');
+        const explanationContent = document.getElementById('explanationContent');
+
+        let activeSegment = null;
+        let translationCache = new Map();
+        let explanationCache = new Map();
+        let currentTranslationData = null;
+
+        // Loading HTML template
+        const loadingHTML = `<span class="translation-loading"><span class="mini-loader"></span>Loading...</span>`;
+
+        // Show translation footer
+        function showTranslationFooter(text) {
+            translationOriginal.textContent = text;
+            translationRomaji.innerHTML = loadingHTML;
+            translationChinese.innerHTML = loadingHTML;
+            translationFooter.classList.add('visible');
+            document.body.classList.add('footer-open');
+
+            // Reset explanation section
+            explanationSection.classList.remove('visible');
+            explanationContent.innerHTML = '';
+            explainBtn.disabled = false;
+            explainBtn.classList.remove('loading');
+            explainBtn.innerHTML = '<span>📖</span> Explain';
+            currentTranslationData = null;
+        }
+
+        // Hide translation footer
+        function hideTranslationFooter() {
+            translationFooter.classList.remove('visible');
+            document.body.classList.remove('footer-open');
+
+            if (activeSegment) {
+                activeSegment.classList.remove('active');
+                activeSegment = null;
+            }
+        }
+
+        // Close button handler
+        translationClose.addEventListener('click', hideTranslationFooter);
+
+        // Fetch translation from Gemini via Poe API
+        async function fetchTranslation(japaneseText, sentenceContext, textPosition) {
+            // Check for API key
+            if (!getApiKey()) {
+                return null;
+            }
+
+            // Create cache key that includes context for better accuracy
+            const cacheKey = `${japaneseText}|||${sentenceContext}|||${textPosition?.start}`;
+
+            // Check cache first
+            if (translationCache.has(cacheKey)) {
+                return translationCache.get(cacheKey);
+            }
+
+            try {
+                let prompt;
+
+                if (sentenceContext && sentenceContext !== japaneseText && textPosition) {
+                    // Build the sentence with selection markers
+                    const beforeSelection = sentenceContext.substring(0, textPosition.start);
+                    const afterSelection = sentenceContext.substring(textPosition.end);
+
+                    prompt = `For the selected Japanese segment, provide:
+
+1. The proper Japanese word/phrase (corrected if the segmentation is incomplete)
+2. The romaji (romanization)
+3. The Traditional Chinese translation
+
+${beforeSelection}
+// selection start
+${japaneseText}
+// selection end
+${afterSelection}
+
+Return in a JSON code block:
+\`\`\`json
+{"japanese": "...", "romaji": "...", "chinese": "..."}
+\`\`\``;
+                } else {
+                    prompt = `For the selected Japanese segment, provide:
+
+1. The proper Japanese bunsetsu (corrected if the segmentation is incomplete)
+2. The romaji (romanization)
+3. The Traditional Chinese translation
+
+// selection start
+${japaneseText}
+// selection end
+
+Return in a JSON code block:
+\`\`\`json
+{"japanese": "...", "romaji": "...", "chinese": "..."}
+\`\`\``;
+                }
+
+                const result = await requestLLMJSON('Gemini-3-Flash', prompt, { stream: false }, null);
+
+                if (result && result.romaji && result.chinese) {
+                    // Use original text as fallback if japanese field is missing
+                    if (!result.japanese) {
+                        result.japanese = japaneseText;
+                    }
+                    // Cache the result
+                    translationCache.set(cacheKey, result);
+                    return result;
+                }
+
+                return null;
+            } catch (err) {
+                console.error('Translation error:', err);
+                return null;
+            }
+        }
+
+        // Fetch explanation from LLM
+        async function fetchExplanation(japaneseText) {
+            // Check for API key
+            if (!getApiKey()) {
+                return null;
+            }
+
+            // Create cache key
+            const cacheKey = `explain|||${japaneseText}`;
+
+            // Check cache first
+            if (explanationCache.has(cacheKey)) {
+                return explanationCache.get(cacheKey);
+            }
+
+            try {
+                const prompt = `I need help understanding a specific Japanese conjugated phrase by seeing how it is built up from its root word.
+
+Please provide a JSON that lists the source Japanese phrase (the root verb), its progressive variations, and their Traditional Chinese translations.
+
+Target Phrase: ${japaneseText}
+
+Requirements:
+
+Progression: Start with the simplest root verb (dictionary form). Then, add one element at a time (e.g., adding a compound word, changing to potential form, changing to negative form) until you reach the Target Phrase.
+End Point: The list should stop exactly at the Target Phrase.
+Example Structure (for reference only):
+
+Root Verb
+Root + Compound
+Root + Compound + Potential
+Target Phrase (Root + Compound + Potential + Negative)
+
+Return in a JSON code block:
+\`\`\`json
+[{"japanese": "...", "romaji": "...", "chinese": "..."}, ...]
+\`\`\``;
+
+                const result = await requestLLMJSON('Gemini-3-Flash', prompt, {}, null);
+
+                if (Array.isArray(result) && result.length > 0) {
+                    // Validate the structure
+                    const isValid = result.every(item =>
+                        item && typeof item === 'object' &&
+                        typeof item.japanese === 'string' &&
+                        typeof item.romaji === 'string' &&
+                        typeof item.chinese === 'string'
+                    );
+
+                    if (isValid) {
+                        // Cache the result
+                        explanationCache.set(cacheKey, result);
+                        return result;
+                    }
+                }
+
+                return null;
+            } catch (err) {
+                console.error('Explanation error:', err);
+                return null;
+            }
+        }
+
+        // Highlight the difference between current and previous string
+        function highlightDiff(current, previous) {
+            if (!previous) {
+                // First item - highlight everything
+                const escaped = current.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                return `<span class="diff-highlight">${escaped}</span>`;
+            }
+
+            const escaped = current.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const prevEscaped = previous.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+            // Find common prefix
+            let prefixEnd = 0;
+            while (prefixEnd < prevEscaped.length && prefixEnd < escaped.length &&
+                   prevEscaped[prefixEnd] === escaped[prefixEnd]) {
+                prefixEnd++;
+            }
+
+            // Find common suffix (from the remaining part after prefix)
+            let suffixStart = escaped.length;
+            let prevSuffixStart = prevEscaped.length;
+            while (suffixStart > prefixEnd && prevSuffixStart > prefixEnd &&
+                   escaped[suffixStart - 1] === prevEscaped[prevSuffixStart - 1]) {
+                suffixStart--;
+                prevSuffixStart--;
+            }
+
+            // Build highlighted string
+            const prefix = escaped.substring(0, prefixEnd);
+            const diff = escaped.substring(prefixEnd, suffixStart);
+            const suffix = escaped.substring(suffixStart);
+
+            if (diff) {
+                return `${prefix}<span class="diff-highlight">${diff}</span>${suffix}`;
+            }
+            return escaped;
+        }
+
+        // Render progression list HTML as a table
+        function renderProgressionList(progressionData) {
+            if (!Array.isArray(progressionData) || progressionData.length === 0) {
+                return '<span class="translation-error">無法載入解釋</span>';
+            }
+
+            let html = `
+                <table class="progression-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 36px;">#</th>
+                            <th>日本語</th>
+                            <th>Romaji</th>
+                            <th>繁中</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            progressionData.forEach((item, index) => {
+                const prevItem = index > 0 ? progressionData[index - 1] : null;
+
+                const japaneseHighlighted = highlightDiff(
+                    item.japanese || '',
+                    prevItem?.japanese || ''
+                );
+                const romajiHighlighted = highlightDiff(
+                    item.romaji || '',
+                    prevItem?.romaji || ''
+                );
+                const chineseEscaped = (item.chinese || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+                html += `
+                    <tr>
+                        <td><span class="progression-step">${index + 1}</span></td>
+                        <td class="progression-japanese">${japaneseHighlighted}</td>
+                        <td class="progression-romaji">${romajiHighlighted}</td>
+                        <td class="progression-chinese">${chineseEscaped}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            return html;
+        }
+
+        // Explain button handler
+        explainBtn.addEventListener('click', async () => {
+            if (!currentTranslationData) return;
+
+            const { japaneseText } = currentTranslationData;
+
+            // Set loading state
+            explainBtn.disabled = true;
+            explainBtn.classList.add('loading');
+            explainBtn.innerHTML = '<span class="mini-loader"></span> Loading...';
+
+            // Show explanation section with loading
+            explanationSection.classList.add('visible');
+            explanationContent.innerHTML = loadingHTML;
+
+            const progressionData = await fetchExplanation(japaneseText);
+
+            // Render the progression list
+            explanationContent.innerHTML = renderProgressionList(progressionData);
+
+            // Reset button state
+            explainBtn.disabled = false;
+            explainBtn.classList.remove('loading');
+            explainBtn.innerHTML = '<span>📖</span> Explain';
+        });
+
+        // Handle segment click
+        function handleSegmentClick(e) {
+            const segment = e.target.closest('.segment');
+            if (!segment) return;
+
+            const text = segment.textContent.trim();
+            if (!text) return;
+
+            // Get the full sentence context from the parent .segmented-line
+            const sentenceLine = segment.closest('.segmented-line');
+            const sentenceContext = sentenceLine ? sentenceLine.textContent.trim() : text;
+
+            // Calculate the position of the segment within the sentence
+            let textPosition = null;
+            if (sentenceLine) {
+                const segments = sentenceLine.querySelectorAll('.segment');
+                let currentPos = 0;
+                for (const seg of segments) {
+                    const segText = seg.textContent;
+                    if (seg === segment) {
+                        textPosition = {
+                            start: currentPos,
+                            end: currentPos + segText.length
+                        };
+                        break;
+                    }
+                    currentPos += segText.length;
+                }
+            }
+
+            // Remove active class from previous segment
+            if (activeSegment) {
+                activeSegment.classList.remove('active');
+            }
+
+            // Set new active segment
+            activeSegment = segment;
+            segment.classList.add('active');
+
+            // Show footer with loading state
+            showTranslationFooter(text);
+
+            // Store current translation data for the Explain button
+            currentTranslationData = {
+                japaneseText: text,
+                sentenceContext: sentenceContext,
+                textPosition: textPosition
+            };
+
+            // Fetch and display translation with sentence context and position
+            fetchTranslation(text, sentenceContext, textPosition).then(result => {
+                if (result) {
+                    // Display the proper Japanese word/phrase from LLM
+                    translationOriginal.textContent = result.japanese;
+                    translationRomaji.textContent = result.romaji;
+                    translationChinese.textContent = result.chinese;
+
+                    // Update stored data with the corrected Japanese text
+                    currentTranslationData.japaneseText = result.japanese;
+                } else {
+                    translationRomaji.innerHTML = '<span class="translation-error">Failed to load</span>';
+                    translationChinese.innerHTML = '<span class="translation-error">Failed to load</span>';
+                }
+            });
+        }
+
+        // Add click listener to extracted text container (event delegation)
+        extractedText.addEventListener('click', handleSegmentClick);
+
+        // Close footer when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!translationFooter.contains(e.target) &&
+                !e.target.closest('.segment') &&
+                translationFooter.classList.contains('visible')) {
+                hideTranslationFooter();
+            }
+        });
+
+        // Close footer with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && translationFooter.classList.contains('visible')) {
+                hideTranslationFooter();
+            }
+        });
+    </script>
+
+
+
+
+
+
+</body></html>
